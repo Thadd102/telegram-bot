@@ -11,7 +11,7 @@ import { createBot, createNotifier, registerCommands } from "./bot.js";
 import { startHealthServer } from "./health.js";
 import { createPoller } from "./poller.js";
 import { safeErrorMessage } from "./notifications/format.js";
-import { createRpcServer } from "./stellar/client.js";
+import { createRpcServer, verifyNetwork } from "./stellar/client.js";
 
 /**
  * Installed before anything else can throw, so a rejection during startup is
@@ -61,6 +61,7 @@ async function main(): Promise<void> {
   );
 
   const server = createRpcServer(config);
+  await verifyNetwork(server, config);
 
   // One read before announcing readiness: a wrong RPC URL should surface now,
   // not as a mystery in the poll log an interval later.

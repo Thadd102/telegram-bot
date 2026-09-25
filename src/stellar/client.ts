@@ -20,6 +20,21 @@ export function createRpcServer(config: StellarConfig): rpc.Server {
   });
 }
 
+/**
+ * Reads the network passphrase from the RPC and throws if it does not match
+ * the configured STELLAR_NETWORK_PASSPHRASE. This prevents the bot from
+ * operating on the wrong network or misinterpreting chain state.
+ */
+export async function verifyNetwork(server: rpc.Server, config: StellarConfig): Promise<void> {
+  const network = await server.getNetwork();
+  if (network.passphrase !== config.networkPassphrase) {
+    throw new Error(
+      `Network passphrase mismatch: RPC returned "${network.passphrase}", but config expects "${config.networkPassphrase}"`
+    );
+  }
+}
+
+
 /** Default stellar.expert origin; override with STELLAR_EXPLORER_BASE_URL. */
 export const DEFAULT_EXPLORER_BASE_URL = "https://stellar.expert/explorer";
 
