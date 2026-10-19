@@ -35,6 +35,20 @@ import {
   NOTIFICATION_MD,
   NOTIFICATION_PLAIN,
 } from "../i18n.js";
+import {
+  highlightLevel,
+  highlightMarker,
+  prefixFirstLine,
+  type HighlightLevel,
+  type HighlightThresholds,
+} from "./highlights.js";
+export {
+  highlightLevel,
+  highlightMarker,
+  prefixFirstLine,
+  type HighlightLevel,
+  type HighlightThresholds,
+} from "./highlights.js";
 
 /** Telegram's MarkdownV2 reserved set. All of it must be escaped, everywhere. */
 const MDV2_RESERVED = /[_*[\]()~`>#+\-=|{}.!\\]/g;
@@ -514,13 +528,23 @@ export function formatEvent(
   config: StellarConfig & {
     channelPreviewMode?: boolean;
     notificationCategories?: readonly string[];
+    highlightThresholds?: HighlightThresholds;
   },
   event: DecodedEvent,
+  thresholds?: HighlightThresholds,
 ): string | null {
   if (!eventAllowedByCategory(config, event)) return null;
   try {
-    const head = headline(event);
+    let head = headline(event);
     if (head === null) return null;
+    const effectiveThresholds = thresholds ?? config.highlightThresholds;
+    if (effectiveThresholds !== undefined) {
+      const level = highlightLevel(event, effectiveThresholds);
+      const marker = highlightMarker(level, effectiveThresholds);
+      if (marker) {
+        head = prefixFirstLine(head, marker);
+      }
+    }
     const body = `${head}\n${footer(config, event)}`;
     if (config.channelPreviewMode) {
       return `${NOTIFICATION_MD.previewModePrefix}\n${body}`;
@@ -695,12 +719,21 @@ function clipPlainText(text: string, max = MAX_PLAIN_TEXT_LENGTH): string {
  * a minimal bounded line rather than crashing the notifier.
  */
 export function formatPlainTextEvent(
-  config: StellarConfig,
+  config: StellarConfig & { highlightThresholds?: HighlightThresholds },
   event: DecodedEvent,
+  thresholds?: HighlightThresholds,
 ): string | null {
   try {
-    const head = plainHeadline(event);
+    let head = plainHeadline(event);
     if (head === null) return null;
+    const effectiveThresholds = thresholds ?? config.highlightThresholds;
+    if (effectiveThresholds !== undefined) {
+      const level = highlightLevel(event, effectiveThresholds);
+      const marker = highlightMarker(level, effectiveThresholds);
+      if (marker) {
+        head = prefixFirstLine(head, marker);
+      }
+    }
     const body = `${head}\n${plainFooter(config, event)}`.trim();
     if (!body) return minimalPlainTextEvent(event);
     return clipPlainText(body);
